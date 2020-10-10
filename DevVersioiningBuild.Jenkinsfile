@@ -48,12 +48,12 @@ pipeline {
         }
         stage('Git Tag Stage') {
             steps {
-                script {
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harsh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
                     def IMAGE_TAG = readFile(file: 'version.txt')
                     println(IMAGE_TAG)
                     sh '''
-                        git tag ${IMAGE_TAG}
-                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git ${IMAGE_TAG}
+                        git tag (IMAGE_TAG)
+                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git IMAGE_TAG
                         git status
                     '''
                 }
