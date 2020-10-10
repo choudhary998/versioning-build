@@ -53,7 +53,7 @@ pipeline {
                     println(IMAGE_TAG)
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harsh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
                         sh "git tag v${IMAGE_TAG}"
-                        // sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git ${IMAGE_TAG}"
+                        sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git $v{IMAGE_TAG}"
                     }
                 }
             }
