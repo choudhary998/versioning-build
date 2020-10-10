@@ -25,7 +25,7 @@ pipeline {
         stage('Versioning') {
             steps {
                 echo 'Bumping up the version!!!'
-                sh "sudo bash set_version.sh"
+                sh "bash set_version.sh"
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harsh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
                     sh '''
                         git add .
