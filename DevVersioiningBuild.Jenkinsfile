@@ -23,7 +23,7 @@ pipeline {
             }
         }
         stage('Versioning') {
-             when {}
+             when {last author}
              steps {
                 echo 'Bumping up the version!!!'
                 sh "bash set_version.sh"
