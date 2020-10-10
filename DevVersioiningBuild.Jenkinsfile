@@ -53,7 +53,7 @@ pipeline {
                     println(IMAGE_TAG)
                     sh '''
                         git tag (IMAGE_TAG)
-                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git IMAGE_TAG
+                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git (IMAGE_TAG)
                         git status
                     '''
                 }
