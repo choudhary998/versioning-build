@@ -23,7 +23,8 @@ pipeline {
             }
         }
         stage('Versioning') {
-            steps {
+             when {}
+             steps {
                 echo 'Bumping up the version!!!'
                 sh "bash set_version.sh"
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harsh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
