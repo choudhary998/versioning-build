@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Revision: 05-June-2019
+Description: "ECS Fargate Cluster Cron Job Scala POC"
+Parameters:
+  RepositoryName:
+    Type: String
+    Description: "AWS ECR Repository Name"
+    Default: "automated-fargate-poc"
+  ImageTag:
+    Type: String
+    Description: "AWS ECR Repository Imagetag"
+    Default: "latest"
+  ClusterName:
+    Type: String
+    Description: "AWS ECS Fargate Cluster Name"
+    Default: "scala-poc-fargate"
+  TaskDefinitionName:
+    Type: String
+    Description: "AWS ECS Fargate Cluster Task Definition name"
+    Default: "scala-poc"
+  ContainerName:
+    Type: String
+    Description: "AWS ECS Fargate Container Name"
+    Default: "scala-poc"
+  EventRuleName:
+    Type: String
+    Description: "AWS ECS Fargate scheduld task even rule name"
+    Default: "scala-poc-rule"
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: AWS VPC ID as String Value
+  SubnetID:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet to deploy EC2 instance into
+  ecsEventsRoleName:
+    Type: String
+    Description: "AWS IAM ecsEventsRoleName"
+    Default: "ecsEventsRole"
+  ecsTaskExecutionRoleName:
+    Type: String
+    Description: "AWS IAM ecsTaskExecutionRoleName"
+    Default: "ecsTaskExecutionRole"
+  ScheduleExpressionCron:
+    Type: String
+    Description: "AWS ScheduleExpression cron schedule"
+    Default: "cron(0/1 * * * ? *)"
+Resources:
+    ECRRepository:
+        Type: "AWS::ECR::Repository"
+        Properties:
+            RepositoryName: !Ref RepositoryName
+            RepositoryPolicyText:
+              Version: '2012-10-17'
+              Statement:
+                - Sid: AllowCrossAccountPushPull
+                  Effect: Allow
+                  Principal:
+                    AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+                  Action:
+                    - 'ecr:BatchCheckLayerAvailability'
+                    - 'ecr:BatchGetImage'
+                    - 'ecr:CompleteLayerUpload'
+                    - 'ecr:DescribeImages'
+                    - 'ecr:DescribeRepositories'
+                    - 'ecr:GetDownloadUrlForLayer'
+                    - 'ecr:GetRepositoryPolicy'
+                    - 'ecr:InitiateLayerUpload'
+                    - 'ecr:ListImages'
+                    - 'ecr:PutImage'
+                    - 'ecr:UploadLayerPart'
+
+    IAMRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: !Ref ecsEventsRoleName
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns:
+              - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+
+    IAMRole2:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: !Ref ecsTaskExecutionRoleName
+            AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns:
+              - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
+    ECSCluster:
+        Type: "AWS::ECS::Cluster"
+        Properties:
+            ClusterName: !Ref ClusterName
+            ClusterSettings:
+              -
+                Name: "containerInsights"
+                Value: "disabled"
+            CapacityProviders:
+              - "FARGATE_SPOT"
+              - "FARGATE"
+
+    CloudWatchLogsGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+          LogGroupName: !Ref AWS::StackName
+          RetentionInDays: 365
+
+    ECSTaskDefinition:
+        Type: "AWS::ECS::TaskDefinition"
+        Properties:
+            ContainerDefinitions:
+              -
+                Essential: true
+                Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${RepositoryName}:${ImageTag}"
+                LogConfiguration:
+                    LogDriver: "awslogs"
+                    Options:
+                        awslogs-group:  !Ref AWS::StackName
+                        awslogs-region: !Ref AWS::Region
+                        awslogs-stream-prefix: "ecs"
+                MemoryReservation: 128
+                Name: !Ref ContainerName
+            Family: !Ref TaskDefinitionName
+            TaskRoleArn: !GetAtt IAMRole2.Arn
+            ExecutionRoleArn: !GetAtt IAMRole2.Arn
+            NetworkMode: "awsvpc"
+            RequiresCompatibilities:
+              - "FARGATE"
+            Cpu: "1024"
+            Memory: "2048"
+
+    EC2SecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: "ECS batch processing Security Group"
+            GroupName: "ECSbatchprocessingSecurityGroup"
+            VpcId: !Ref VPCID
+            SecurityGroupEgress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                IpProtocol: "-1"
+              - 
+                CidrIpv6: "::/0"
+                IpProtocol: "-1"
+
+    EventsRule:
+        Type: "AWS::Events::Rule"
+        Properties:
+            Name: !Ref EventRuleName
+            Description: !Ref EventRuleName
+            ScheduleExpression: !Ref ScheduleExpressionCron
+            State: "ENABLED"
+            Targets:
+              -
+                Arn: !GetAtt ECSCluster.Arn
+                EcsParameters:
+                    TaskDefinitionArn: !Ref ECSTaskDefinition
+                    TaskCount: 1
+                    LaunchType: "FARGATE"
+                    PlatformVersion: "LATEST"
+                    NetworkConfiguration:
+                        AwsVpcConfiguration:
+                            Subnets:
+                              - !Ref SubnetID
+                            SecurityGroups:
+                              - !Ref EC2SecurityGroup
+                            AssignPublicIp: "ENABLED"
+                Id: "test"
+                Input: "{}"
+                RoleArn: !GetAtt IAMRole.Arn
+            EventBusName: "default"
