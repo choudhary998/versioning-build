@@ -23,4 +23,4 @@ bin/automated-fargate-poc
 Versioining
 Version.txt is set to 0.0.0 and if {{MAJOR}} or {{MINOR}} or {{PATCH}} present in the commit message, then it will bump as desired the version.txt It is compulsary to enter the tag as {{MAJOR}} or {{MINOR}} or {{PATCH}} inside the commit message.
 
-Use of if-else to be implemented in the Jenkinsfiles.
+Use of if-else to be implemented in the Jenkinsfile.
