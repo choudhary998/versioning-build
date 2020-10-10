@@ -52,11 +52,8 @@ pipeline {
                     def IMAGE_TAG = readFile(file: 'version.txt')
                     println(IMAGE_TAG)
                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'harsh', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
-                        sh '''
-                            git tag ${IMAGE_TAG}
-                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git ${IMAGE_TAG}
-                            git status
-                        '''
+                        sh "git tag v${IMAGE_TAG}"
+                        // sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/choudhary998/versioning-build.git ${IMAGE_TAG}"
                     }
                 }
             }
