@@ -23,7 +23,7 @@ pipeline {
             }
         }
         stage('Versioning') {
-             when {last author}
+             when {expression { params.Author_list == 'Last Aouthor'}
              steps {
                 echo 'Bumping up the version!!!'
                 sh "bash set_version.sh"
